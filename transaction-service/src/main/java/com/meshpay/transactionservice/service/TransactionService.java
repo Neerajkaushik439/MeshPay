@@ -327,7 +327,20 @@ public class TransactionService {
         if (transaction != null) {
             if (event.getTransactionStatus() != null) {
                 try {
-                    transaction.setStatus(TransactionStatus.valueOf(event.getTransactionStatus()));
+                    TransactionStatus newStatus = TransactionStatus.valueOf(event.getTransactionStatus());
+                    TransactionStatus currentStatus = transaction.getStatus();
+                    
+                    boolean isCurrentTerminal = currentStatus == TransactionStatus.SUCCESS 
+                            || currentStatus == TransactionStatus.FAILED 
+                            || currentStatus == TransactionStatus.EXPIRED;
+                            
+                    boolean isNewTerminal = newStatus == TransactionStatus.SUCCESS 
+                            || newStatus == TransactionStatus.FAILED 
+                            || newStatus == TransactionStatus.EXPIRED;
+                            
+                    if (!isCurrentTerminal || isNewTerminal) {
+                        transaction.setStatus(newStatus);
+                    }
                 } catch (Exception ignored) {}
             }
             if ("Relay-1".equals(event.getServiceName())) {

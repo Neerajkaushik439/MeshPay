@@ -115,6 +115,9 @@ public class PaymentService {
                     .build();
         }
         System.out.println("[BANK-SERVICE] STEP 3 PASSED: Not a duplicate");
+        
+        // Bank stage is Hop 4
+        packet.setHopCount(packet.getHopCount() + 1);
 
         publishEvent(packet, "BANK", "ROUTING", "Bank Received: Encrypted packet received from Gateway");
 
@@ -165,7 +168,17 @@ public class PaymentService {
                     .orElseThrow(() -> new IllegalArgumentException("Sender account not found with UPI ID: " + payload.getSenderUpiId()));
             System.out.println("[BANK-SERVICE] STEP 8: Looking up receiver account: " + payload.getReceiverUpiId());
             Account receiverAccount = accountRepository.findByUpiId(payload.getReceiverUpiId())
-                    .orElseThrow(() -> new IllegalArgumentException("Receiver account not found with UPI ID: " + payload.getReceiverUpiId()));
+                    .orElseGet(() -> {
+                        System.out.println("[BANK-SERVICE] STEP 8: Auto-creating receiver account for UPI ID: " + payload.getReceiverUpiId());
+                        Account newAcc = Account.builder()
+                                .accountNumber("ACC-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                                .accountHolderName(payload.getReceiverUpiId().split("@")[0].toUpperCase())
+                                .upiId(payload.getReceiverUpiId())
+                                .currentBalance(java.math.BigDecimal.ZERO)
+                                .accountStatus(AccountStatus.ACTIVE)
+                                .build();
+                        return accountRepository.save(newAcc);
+                    });
 
             System.out.println("[BANK-SERVICE] STEP 8: Sender balance=" + senderAccount.getCurrentBalance() + " status=" + senderAccount.getAccountStatus());
             System.out.println("[BANK-SERVICE] STEP 8: Receiver balance=" + receiverAccount.getCurrentBalance() + " status=" + receiverAccount.getAccountStatus());
@@ -233,6 +246,9 @@ public class PaymentService {
             ProcessedPayment savedPayment = processedPaymentRepository.save(payment);
             System.out.println("[BANK-SERVICE] STEP 10 DONE: Payment saved as SUCCESS");
             log.info("Payment successful: Atomically completed transaction ID {}.", payload.getTransactionId());
+            
+            // Completed stage is Hop 5
+            packet.setHopCount(packet.getHopCount() + 1);
             publishEvent(packet, "COMPLETED", "SUCCESS", "Payment Successful: Atomically completed ledger settlements");
 
             // Step 11: Return response
@@ -247,6 +263,7 @@ public class PaymentService {
 
         } catch (Exception e) {
             System.out.println("[BANK-SERVICE] PAYMENT FAILED: " + e.getClass().getName() + " - " + e.getMessage());
+            packet.setHopCount(packet.getHopCount() + 1);
             publishEvent(packet, "COMPLETED", "FAILED", "Payment Failed: " + e.getMessage());
             throw e;
         }

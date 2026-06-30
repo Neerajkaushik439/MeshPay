@@ -19,7 +19,7 @@ public class CreateTransactionRequest {
 
     @NotBlank(message = "Receiver UPI ID is required")
     @Pattern(
-        regexp = "^[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z]{2,64}$",
+        regexp = "^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$",
         message = "Receiver UPI ID must be in a valid format (e.g. merchant@okaxis)"
     )
     private String receiverUpiId;

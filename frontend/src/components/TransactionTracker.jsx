@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import axios from 'axios';
@@ -6,23 +6,72 @@ import axios from 'axios';
 export default function TransactionTracker({ transactionId, onClose }) {
   const [connectionStatus, setConnectionStatus] = useState('CONNECTING');
   const [events, setEvents] = useState([]);
-  const [latestStatus, setLatestStatus] = useState(null);
-  const consoleEndRef = useRef(null);
 
   const steps = [
-    { key: 'CREATED', label: 'Transaction Created', service: 'Transaction-Service' },
-    { key: 'ENCRYPTED', label: 'Encrypted', service: 'Transaction-Service' },
-    { key: 'RELAY_1', label: 'Relay 1', service: 'Relay-1' },
-    { key: 'RELAY_2', label: 'Relay 2', service: 'Relay-2' },
-    { key: 'GATEWAY', label: 'Gateway', service: 'Gateway' },
-    { key: 'BANK', label: 'Bank', service: 'Bank-Service' },
-    { key: 'COMPLETED', label: 'Completed', service: 'Bank-Service' }
+    { key: 'CREATED', label: 'Created' },
+    { key: 'ENCRYPTED', label: 'Encrypted' },
+    { key: 'RELAY_1', label: 'Relay 1' },
+    { key: 'RELAY_2', label: 'Relay 2' },
+    { key: 'GATEWAY', label: 'Gateway' },
+    { key: 'BANK', label: 'Bank' },
+    { key: 'COMPLETED', label: 'Completed' }
   ];
 
-  useEffect(() => {
-    if (consoleEndRef.current) {
-      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  // Derive the "best" status from ALL events rather than relying on the last WS event.
+  const derivedStatus = useMemo(() => {
+    if (events.length === 0) return null;
+
+    // Stage priority order (higher index = more advanced)
+    const stagePriority = { 'CREATED': 0, 'ENCRYPTED': 1, 'RELAY_1': 2, 'RELAY_2': 3, 'GATEWAY': 4, 'BANK': 5, 'COMPLETED': 6 };
+    // Terminal statuses always win
+    const terminalEvent = events.find(e =>
+      e.transactionStatus === 'SUCCESS' || e.transactionStatus === 'FAILED' || e.transactionStatus === 'EXPIRED' || e.currentStage === 'COMPLETED'
+    );
+    if (terminalEvent) return terminalEvent;
+
+    // Otherwise, return the event with the highest stage priority
+    let best = events[0];
+    for (const evt of events) {
+      const evtPriority = stagePriority[evt.currentStage] ?? -1;
+      const bestPriority = stagePriority[best.currentStage] ?? -1;
+      if (evtPriority > bestPriority) {
+        best = evt;
+      }
     }
+    return best;
+  }, [events]);
+
+  // Derive the fullest route history from all events
+  const fullRouteHistory = useMemo(() => {
+    if (events.length === 0) return ['Transaction-Service'];
+    
+    // Build route from step stages we've seen
+    const stageOrder = ['CREATED', 'ENCRYPTED', 'RELAY_1', 'RELAY_2', 'GATEWAY', 'BANK', 'COMPLETED'];
+    const stageToNode = {
+      'CREATED': 'Transaction-Service',
+      'ENCRYPTED': 'Transaction-Service',
+      'RELAY_1': 'Relay-1',
+      'RELAY_2': 'Relay-2',
+      'GATEWAY': 'Gateway',
+      'BANK': 'Bank-Service',
+      'COMPLETED': 'Bank-Service'
+    };
+    
+    const seenStages = new Set(events.map(e => e.currentStage));
+    const route = [];
+    const addedNodes = new Set();
+    
+    for (const stage of stageOrder) {
+      if (seenStages.has(stage)) {
+        const node = stageToNode[stage];
+        if (!addedNodes.has(node)) {
+          route.push(node);
+          addedNodes.add(node);
+        }
+      }
+    }
+    
+    return route.length > 0 ? route : ['Transaction-Service'];
   }, [events]);
 
   useEffect(() => {
@@ -30,7 +79,6 @@ export default function TransactionTracker({ transactionId, onClose }) {
 
     setConnectionStatus('CONNECTING');
     setEvents([]);
-    setLatestStatus(null);
     console.log('[Tracker] Mounting for transaction:', transactionId);
 
     // Helper: merge new events into existing, dedup by message + currentStage
@@ -65,11 +113,6 @@ export default function TransactionTracker({ transactionId, onClose }) {
               const merged = mergeEvents(prev, res.data);
               console.log('[Tracker] After merge:', merged.length, 'total events');
               return merged;
-            });
-            const lastEvent = res.data[res.data.length - 1];
-            setLatestStatus(prev => {
-              if (!prev) return lastEvent;
-              return new Date(lastEvent.timestamp) > new Date(prev.timestamp) ? lastEvent : prev;
             });
             // Check if transaction reached terminal state
             if (res.data.some(e => e.currentStage === 'COMPLETED' || e.transactionStatus === 'SUCCESS' || e.transactionStatus === 'FAILED')) {
@@ -112,7 +155,7 @@ export default function TransactionTracker({ transactionId, onClose }) {
 
       stompClient.subscribe(`/topic/transactions/${transactionId}`, (message) => {
         const event = JSON.parse(message.body);
-        console.log('[Tracker] WS Event received:', event.currentStage, event.message);
+        console.log('[Tracker] WS Event received:', event.currentStage, event.transactionStatus, event.message);
 
         // Merge WS event into existing events (dedup by message + stage)
         setEvents((prev) => {
@@ -127,9 +170,6 @@ export default function TransactionTracker({ transactionId, onClose }) {
           updated.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
           return updated;
         });
-
-        // Set latest state
-        setLatestStatus(event);
       });
     };
 
@@ -153,70 +193,77 @@ export default function TransactionTracker({ transactionId, onClose }) {
   }, [transactionId]);
 
   const getStepState = (stepKey) => {
-    const isFailed = latestStatus?.transactionStatus === 'FAILED' || events.some(e => e.transactionStatus === 'FAILED');
-    const isExpired = latestStatus?.transactionStatus === 'EXPIRED' || events.some(e => e.transactionStatus === 'EXPIRED');
+    const isFailed = events.some(e => e.transactionStatus === 'FAILED');
+    const isExpired = events.some(e => e.transactionStatus === 'EXPIRED');
+    const isSuccess = events.some(e => e.transactionStatus === 'SUCCESS' || e.currentStage === 'COMPLETED');
     
-    // Find if we have an event for this stepKey
-    const stepEvent = events.find(e => e.currentStage === stepKey);
+    // Find if we have an event for this stepKey (search in reverse to get the most recent message)
+    const stepEvent = [...events].reverse().find(e => e.currentStage === stepKey);
     const hasEvent = !!stepEvent;
 
-    // Check if this step is failed
-    if ((isFailed || isExpired) && latestStatus?.currentStage === stepKey) {
-      return { status: 'FAILED', event: latestStatus };
+    // If the overall transaction failed, find where it failed
+    if (isFailed || isExpired) {
+      const failedEvent = events.find(e => e.transactionStatus === 'FAILED' || e.transactionStatus === 'EXPIRED');
+      if (failedEvent && failedEvent.currentStage === stepKey) {
+        return { status: 'FAILED', event: failedEvent };
+      }
+      if (hasEvent && stepEvent.transactionStatus !== 'FAILED' && stepEvent.transactionStatus !== 'EXPIRED') {
+        return { status: 'SUCCESS', event: stepEvent };
+      }
     }
 
     if (hasEvent) {
-      // If we have an event for a subsequent stage, then this stage is SUCCESS
       if (stepEvent.transactionStatus === 'FAILED' || stepEvent.transactionStatus === 'EXPIRED') {
         return { status: 'FAILED', event: stepEvent };
       }
       return { status: 'SUCCESS', event: stepEvent };
     }
 
-    // Is it currently active?
-    const isActive = latestStatus?.currentStage === stepKey && !(latestStatus?.transactionStatus === 'SUCCESS' || latestStatus?.transactionStatus === 'FAILED');
-    if (isActive) {
-      return { status: 'ACTIVE', event: latestStatus };
+    if (isSuccess) {
+      return { status: 'PENDING', event: null };
+    }
+
+    if (derivedStatus && derivedStatus.currentStage === stepKey) {
+      return { status: 'ACTIVE', event: derivedStatus };
     }
 
     return { status: 'PENDING', event: null };
   };
 
   const getStatusColor = () => {
-    if (latestStatus?.transactionStatus === 'SUCCESS') return 'text-emerald-400';
-    if (latestStatus?.transactionStatus === 'FAILED') return 'text-red-400';
-    if (latestStatus?.transactionStatus === 'EXPIRED') return 'text-amber-400';
-    return 'text-sky-400';
+    const txnStatus = derivedStatus?.transactionStatus;
+    if (txnStatus === 'SUCCESS') return 'text-emerald-600';
+    if (txnStatus === 'FAILED') return 'text-red-600';
+    if (txnStatus === 'EXPIRED') return 'text-amber-600';
+    return 'text-blue-600';
+  };
+
+  const getDisplayStatus = () => {
+    if (!derivedStatus) return 'ENCRYPTED';
+    const status = derivedStatus.transactionStatus;
+    if (status === 'SUCCESS') return 'SUCCESS';
+    if (status === 'FAILED') return 'FAILED';
+    if (status === 'EXPIRED') return 'EXPIRED';
+    return status || 'ROUTING';
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden backdrop-blur">
+    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-md relative overflow-hidden text-slate-900 mb-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-850 pb-5 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             Live Transaction Tracker
             <span className="text-xs font-normal text-slate-500 font-mono">#{transactionId.substring(0, 8)}</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">Real-time Bluetooth mesh propagation metrics</p>
+          <p className="text-xs text-slate-500 mt-1">Real-time Bluetooth mesh propagation metrics</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono flex items-center gap-1.5 border ${
-            connectionStatus === 'CONNECTED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-            connectionStatus === 'CONNECTING' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse' : 
-            'bg-red-500/10 text-red-400 border-red-500/20'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              connectionStatus === 'CONNECTED' ? 'bg-emerald-400' : 
-              connectionStatus === 'CONNECTING' ? 'bg-amber-400' : 'bg-red-400'
-            }`} />
-            WS: {connectionStatus}
-          </span>
           {onClose && (
             <button 
               onClick={onClose}
-              className="px-3 py-1 text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 rounded-lg transition-all"
+              className="px-3 py-1 text-xs bg-slate-100 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-200 transition-all cursor-pointer"
             >
               Clear Tracker
             </button>
@@ -224,146 +271,66 @@ export default function TransactionTracker({ transactionId, onClose }) {
         </div>
       </div>
 
-      {/* Main Grid: Left Timeline, Right Dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Timeline (Left 1 Span) */}
-        <div className="lg:col-span-1 border-r border-slate-850/40 pr-0 lg:pr-6">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Packet Routing Timeline</h3>
-          <div className="relative pl-6 space-y-6">
+      {/* Horizontal Packet Routing Timeline */}
+      <div className="mb-8">
+        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Packet Routing Timeline</h3>
+        <div className="relative flex flex-col md:flex-row justify-between items-center w-full gap-4 md:gap-2 px-2">
+          {/* Connector Line */}
+          <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-200 -translate-y-1/2 hidden md:block z-0" />
+          
+          {steps.map((step, idx) => {
+            const { status } = getStepState(step.key);
             
-            {/* Timeline Vertical Bar */}
-            <div className="absolute left-[30px] top-3 bottom-3 w-[2px] bg-slate-800" />
+            let circleStyle = 'bg-white border-slate-200 text-slate-400';
+            let labelStyle = 'text-slate-400';
+            let ringPulse = null;
 
-            {steps.map((step) => {
-              const { status, event } = getStepState(step.key);
-              
-              // Determine status styles
-              let iconBg = 'bg-slate-950 border-slate-800 text-slate-600';
-              let titleColor = 'text-slate-500';
-              let lineDot = null;
+            if (status === 'SUCCESS') {
+              circleStyle = 'bg-emerald-500 border-emerald-500 text-white font-bold';
+              labelStyle = 'text-emerald-600 font-semibold';
+            } else if (status === 'ACTIVE') {
+              circleStyle = 'bg-blue-600 border-blue-600 text-white font-bold';
+              labelStyle = 'text-blue-600 font-bold';
+              ringPulse = <span className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" />;
+            } else if (status === 'FAILED') {
+              circleStyle = 'bg-red-500 border-red-500 text-white font-bold';
+              labelStyle = 'text-red-600 font-bold';
+            }
 
-              if (status === 'SUCCESS') {
-                iconBg = 'bg-emerald-500/10 border-emerald-500 text-emerald-400';
-                titleColor = 'text-slate-200';
-              } else if (status === 'ACTIVE') {
-                iconBg = 'bg-sky-500/20 border-sky-500 text-sky-400 ring-2 ring-sky-500/10';
-                titleColor = 'text-white font-semibold';
-                lineDot = <span className="absolute -left-[5px] -top-[5px] w-5 h-5 bg-sky-500 rounded-full animate-ping opacity-30" />;
-              } else if (status === 'FAILED') {
-                iconBg = 'bg-red-500/10 border-red-500 text-red-400';
-                titleColor = 'text-red-400 font-semibold';
-              }
-
-              return (
-                <div key={step.key} className="flex gap-4 relative">
-                  
-                  {/* Step Dot */}
-                  <div className="relative z-10">
-                    <div className={`w-[14px] h-[14px] rounded-full border-2 flex items-center justify-center transition-all ${iconBg}`}>
-                      {lineDot}
-                      {status === 'SUCCESS' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />}
-                      {status === 'ACTIVE' && <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />}
-                      {status === 'FAILED' && <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />}
-                    </div>
-                  </div>
-
-                  {/* Step Details */}
-                  <div className="flex-1 -mt-1">
-                    <div className="flex justify-between items-start">
-                      <span className={`text-xs ${titleColor}`}>{step.label}</span>
-                      {event && (
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </span>
-                      )}
-                    </div>
-                    {event && (
-                      <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed font-mono">
-                        {event.message}
-                      </p>
-                    )}
-                  </div>
+            return (
+              <div key={step.key} className="flex flex-col items-center z-10 bg-white px-3 relative w-full md:w-auto">
+                <div className={`relative w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs transition-all duration-300 ${circleStyle}`}>
+                  {ringPulse}
+                  {status === 'SUCCESS' ? (
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  ) : (
+                    <span>{idx + 1}</span>
+                  )}
                 </div>
-              );
-            })}
+                <span className={`text-[11px] mt-2 whitespace-nowrap text-center ${labelStyle}`}>{step.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
+      {/* Live Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <span className="text-[10px] text-slate-500 uppercase font-semibold">Transaction Status</span>
+          <div className={`text-xl font-extrabold mt-1 uppercase ${getStatusColor()}`}>
+            {getDisplayStatus()}
           </div>
         </div>
 
-        {/* Live Metrics & Terminal Console (Right 2 Spans) */}
-        <div className="lg:col-span-2 flex flex-col justify-between space-y-6">
-          
-          {/* Live Metrics Board */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-850">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Transaction Status</span>
-              <div className={`text-sm font-extrabold mt-1 uppercase ${getStatusColor()}`}>
-                {latestStatus?.transactionStatus || 'ENCRYPTED'}
-              </div>
-            </div>
-
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-850">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Current Hop Count</span>
-              <div className="text-sm font-extrabold text-white mt-1 font-mono">
-                {latestStatus ? `${latestStatus.hopCount} / 5` : '0 / 5'}
-              </div>
-            </div>
-
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-850">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Service stage</span>
-              <div className="text-sm font-extrabold text-sky-400 mt-1 uppercase font-mono">
-                {latestStatus?.serviceName || 'User-Service'}
-              </div>
-            </div>
-
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-850 col-span-2 sm:col-span-1">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Current Node Status</span>
-              <div className="text-sm font-extrabold text-white mt-1">
-                {latestStatus?.packetStatus || 'CREATED'}
-              </div>
-            </div>
-
-            <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-850 col-span-2 sm:col-span-4">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Bluetooth Route Trace</span>
-              <div className="text-xs font-mono text-emerald-400 mt-1 select-all">
-                {latestStatus && latestStatus.routeHistory && latestStatus.routeHistory.length > 0 ? (
-                  latestStatus.routeHistory.join(' ➔ ')
-                ) : (
-                  'Transaction-Service'
-                )}
-              </div>
-            </div>
-
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <span className="text-[10px] text-slate-500 uppercase font-semibold">Bluetooth Route Trace</span>
+          <div className="text-sm font-mono text-slate-700 mt-1.5 select-all">
+            {fullRouteHistory.join(' ➔ ')}
           </div>
-
-          {/* Terminal Console Log */}
-          <div>
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Service Trace Log</h4>
-            <div className="bg-slate-950 rounded-2xl p-4 font-mono text-[11px] border border-slate-850 h-56 overflow-y-auto space-y-2">
-              {events.length === 0 ? (
-                <div className="text-slate-600 italic">Awaiting transaction WebSocket stream packages...</div>
-              ) : (
-                events.map((evt, idx) => (
-                  <div key={idx} className="flex gap-2 items-start text-sky-350">
-                    <span className="text-slate-600 select-none">[{idx + 1}]</span>
-                    <span className="text-slate-500">[{new Date(evt.timestamp).toLocaleTimeString()}]</span>
-                    <span className="text-sky-500">[{evt.serviceName}]</span>
-                    <span className={
-                      evt.transactionStatus === 'SUCCESS' ? 'text-emerald-400' :
-                      evt.transactionStatus === 'FAILED' ? 'text-red-400' :
-                      evt.message.includes('Retry') ? 'text-amber-400 animate-pulse' : 'text-slate-350'
-                    }>
-                      {evt.message}
-                    </span>
-                  </div>
-                ))
-              )}
-              <div ref={consoleEndRef} />
-            </div>
-          </div>
-
         </div>
 
       </div>
