@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: meshpay-mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: meshpay_user
+      MYSQL_USER: meshpay_user
+      MYSQL_PASSWORD: meshpay_password
+    volumes:
+      - ./mysql-init:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/meshpay_user?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+
+  relay-service-1:
+    build:
+      context: .
+      dockerfile: relay-service-1/Dockerfile
+    container_name: relay-service-1
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/meshpay_relay_1?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - NEXT_NODE_URL=http://relay-service-2:8083
+      - TRANSACTION_SERVICE_URL=http://transaction-service:8086
+
+  relay-service-2:
+    build:
+      context: .
+      dockerfile: relay-service-2/Dockerfile
+    container_name: relay-service-2
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/meshpay_relay_2?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - NEXT_NODE_URL=http://gateway-service:8084
+      - TRANSACTION_SERVICE_URL=http://transaction-service:8086
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    container_name: gateway-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/meshpay_gateway?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - BANK_SERVICE_URL=http://bank-service:8085
+      - TRANSACTION_SERVICE_URL=http://transaction-service:8086
+
+  bank-service:
+    build:
+      context: .
+      dockerfile: bank-service/Dockerfile
+    container_name: bank-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/meshpay_bank?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - TRANSACTION_SERVICE_URL=http://transaction-service:8086
+
+  transaction-service:
+    build:
+      context: .
+      dockerfile: transaction-service/Dockerfile
+    container_name: transaction-service
+    ports:
+      - "8086:8086"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/meshpay_transaction?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - USER_SERVICE_URL=http://user-service:8081
+      - BANK_SERVICE_URL=http://bank-service:8085
+      - NEXT_NODE_URL=http://relay-service-1:8082
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: meshpay-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - user-service
+      - relay-service-1
+      - relay-service-2
+      - gateway-service
+      - bank-service
+      - transaction-service
+
+volumes:
+  mysql_data:

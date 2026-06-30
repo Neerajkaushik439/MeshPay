@@ -1,0 +1,37 @@
+# Java / Maven build output
+**/target/
+**/classes/
+**/generated-sources/
+**/generated-test-sources/
+**/maven-archiver/
+**/maven-status/
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
+**/*.original
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+
+# Local environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.autocomplete.jsonl
