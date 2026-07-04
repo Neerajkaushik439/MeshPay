@@ -13,15 +13,15 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 transition-all duration-300">
+    <nav className="bg-white border-b border-white shadow-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2 group">
-              <span className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-500/10 group-hover:scale-105 transition-transform duration-300">
+              <span className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform duration-300">
                 M
               </span>
-              <span className="font-bold text-xl tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors duration-300">
+              <span className="font-bold text-xl tracking-tight text-black transition-colors duration-300">
                 MeshPay
               </span>
             </Link>
@@ -29,32 +29,21 @@ export default function Navbar() {
           
           {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-6">
-            <Link
-              to="/"
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                location.pathname === '/'
-                  ? 'bg-slate-100 text-blue-600 shadow-inner'
-                  : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
-              }`}
-            >
-              Home
-            </Link>
-
             {user ? (
               <>
                 <Link
                   to="/dashboard"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    location.pathname === '/dashboard'
-                      ? 'bg-slate-100 text-blue-600 shadow-inner'
-                      : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
+                    location.pathname === '/dashboard' || location.pathname === '/'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-black hover:bg-blue-600 hover:text-white'
                   }`}
                 >
                   Dashboard
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200 cursor-pointer"
+                  className="px-3 py-2 rounded-lg text-sm font-medium border border-white shadow-sm text-black hover:bg-blue-600 hover:text-white transition-all duration-200 cursor-pointer"
                 >
                   Logout
                 </button>
@@ -65,8 +54,8 @@ export default function Navbar() {
                   to="/login"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     location.pathname === '/login'
-                      ? 'bg-slate-100 text-blue-600 shadow-inner'
-                      : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-black hover:bg-blue-600 hover:text-white'
                   }`}
                 >
                   Login
@@ -75,8 +64,8 @@ export default function Navbar() {
                   to="/register"
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     location.pathname === '/register'
-                      ? 'bg-slate-100 text-blue-600 shadow-inner'
-                      : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-black hover:bg-blue-600 hover:text-white'
                   }`}
                 >
                   Register
@@ -90,7 +79,7 @@ export default function Navbar() {
             <button
               onClick={() => setIsOpen(!isOpen)}
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-lg text-black hover:bg-blue-600 hover:text-white focus:outline-none"
             >
               <span className="sr-only">Open main menu</span>
               {!isOpen ? (
@@ -109,31 +98,21 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden bg-white border-b border-slate-200 px-2 pt-2 pb-3 space-y-1 sm:px-3">
-          <Link
-            to="/"
-            onClick={() => setIsOpen(false)}
-            className={`block px-3 py-2 rounded-lg text-base font-medium ${
-              location.pathname === '/' ? 'bg-slate-100 text-blue-600' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'
-            }`}
-          >
-            Home
-          </Link>
-
+        <div className="md:hidden bg-white border-b border-white shadow-sm px-2 pt-2 pb-3 space-y-1 sm:px-3">
           {user ? (
             <>
               <Link
                 to="/dashboard"
                 onClick={() => setIsOpen(false)}
                 className={`block px-3 py-2 rounded-lg text-base font-medium ${
-                  location.pathname === '/dashboard' ? 'bg-slate-100 text-blue-600' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'
+                  location.pathname === '/dashboard' || location.pathname === '/' ? 'bg-blue-600 text-white' : 'text-black hover:bg-blue-600 hover:text-white'
                 }`}
               >
                 Dashboard
               </Link>
               <button
                 onClick={handleLogout}
-                className="w-full text-left block px-3 py-2 rounded-lg text-base font-medium text-red-600 hover:bg-red-50 cursor-pointer"
+                className="w-full text-left block px-3 py-2 rounded-lg text-base font-medium border border-white shadow-sm text-black hover:bg-blue-600 hover:text-white cursor-pointer mt-1"
               >
                 Logout
               </button>
@@ -144,7 +123,7 @@ export default function Navbar() {
                 to="/login"
                 onClick={() => setIsOpen(false)}
                 className={`block px-3 py-2 rounded-lg text-base font-medium ${
-                  location.pathname === '/login' ? 'bg-slate-100 text-blue-600' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'
+                  location.pathname === '/login' ? 'bg-blue-600 text-white' : 'text-black hover:bg-blue-600 hover:text-white'
                 }`}
               >
                 Login
@@ -153,7 +132,7 @@ export default function Navbar() {
                 to="/register"
                 onClick={() => setIsOpen(false)}
                 className={`block px-3 py-2 rounded-lg text-base font-medium ${
-                  location.pathname === '/register' ? 'bg-slate-100 text-blue-600' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'
+                  location.pathname === '/register' ? 'bg-blue-600 text-white' : 'text-black hover:bg-blue-600 hover:text-white'
                 }`}
               >
                 Register

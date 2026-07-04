@@ -36,49 +36,46 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
-      <div className="max-w-md w-full bg-slate-900/50 backdrop-blur-md border border-slate-850 p-8 rounded-3xl shadow-xl relative z-10">
+    <div className="min-h-[calc(100vh-4rem)] bg-white flex items-center justify-center px-4 py-12 relative overflow-hidden">
+      <div className="max-w-md w-full bg-white border border-white p-8 rounded-3xl shadow-2xl relative z-10">
         <div className="text-center mb-8">
-          <span className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-emerald-400 flex items-center justify-center text-slate-950 font-bold text-2xl mx-auto shadow-lg shadow-sky-500/10 mb-4">
+          <span className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-md mb-4">
             M
           </span>
-          <h2 className="text-3xl font-extrabold text-white">Welcome Back</h2>
-          <p className="text-sm text-slate-400 mt-2">Sign in to your offline mesh terminal</p>
+          <h2 className="text-3xl font-extrabold text-black">Welcome Back</h2>
+          <p className="text-sm text-black mt-2">Sign in to your offline mesh terminal</p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-4 py-3 rounded-xl mb-4">
-            {error}
+          <div className="bg-white border-2 border-white text-black font-bold text-xs px-4 py-3 rounded-xl mb-4 shadow-md">
+            ERROR: {error}
           </div>
         )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-black mb-2">
               Email Address
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
+              className="w-full bg-white border border-white rounded-xl px-4 py-3 text-sm text-black focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-all placeholder:text-black/50 shadow-md"
               placeholder="name@example.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-black mb-2">
               Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
+              className="w-full bg-white border border-white rounded-xl px-4 py-3 text-sm text-black focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-all placeholder:text-black/50 shadow-md"
               placeholder="••••••••"
               required
             />
@@ -87,15 +84,15 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-sky-500 to-emerald-500 text-slate-950 font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-sky-500/15"
+            className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md cursor-pointer"
           >
             {loading ? 'Authenticating...' : 'Authenticate Terminal'}
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-500 mt-8">
+        <p className="text-center text-xs text-black mt-8">
           Need a terminal ID?{' '}
-          <Link to="/register" className="text-sky-400 hover:underline">
+          <Link to="/register" className="text-black font-bold underline hover:no-underline">
             Register terminal
           </Link>
         </p>

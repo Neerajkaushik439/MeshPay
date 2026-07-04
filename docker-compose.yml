@@ -30,10 +30,13 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      bank-service:
+        condition: service_started
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/meshpay_user?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - BANK_SERVICE_URL=http://bank-service:8085
 
   relay-service-1:
     build:

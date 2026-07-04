@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await api.post('/api/auth/login', { email, password });
-    const { token: jwtToken, fullName } = res.data;
+    const { token: jwtToken, fullName, upiId } = res.data;
     localStorage.setItem('token', jwtToken);
     setToken(jwtToken);
     // Explicitly fetching User details immediately to populate database context
@@ -42,13 +42,17 @@ export function AuthProvider({ children }) {
       });
       setUser(meRes.data);
     } catch (err) {
-      setUser({ email, fullName });
+      setUser({ email, fullName, upiId });
     }
     return res.data;
   };
 
-  const register = async (fullName, email, password) => {
-    const res = await api.post('/api/auth/register', { fullName, email, password });
+  const register = async (fullName, email, password, initialBalance) => {
+    const payload = { fullName, email, password };
+    if (initialBalance !== undefined && initialBalance !== null && initialBalance !== '') {
+      payload.initialBalance = parseFloat(initialBalance);
+    }
+    const res = await api.post('/api/auth/register', payload);
     return res.data;
   };
 

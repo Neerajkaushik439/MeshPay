@@ -18,8 +18,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:*")
-                .withSockJS();
+        String allowedOriginsEnv = System.getenv("ALLOWED_ORIGINS");
+        if (allowedOriginsEnv != null && !allowedOriginsEnv.isEmpty()) {
+            registry.addEndpoint("/ws")
+                    .setAllowedOriginPatterns(allowedOriginsEnv.split(","))
+                    .withSockJS();
+        } else {
+            registry.addEndpoint("/ws")
+                    .setAllowedOriginPatterns("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:*")
+                    .withSockJS();
+        }
     }
 }

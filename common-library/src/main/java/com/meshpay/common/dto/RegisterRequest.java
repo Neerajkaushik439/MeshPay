@@ -1,5 +1,6 @@
 package com.meshpay.common.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -8,6 +9,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -29,4 +32,7 @@ public class RegisterRequest {
         message = "Password must contain at least one letter and one number"
     )
     private String password;
+
+    @DecimalMin(value = "0.0", message = "Initial balance must be zero or greater")
+    private BigDecimal initialBalance;
 }

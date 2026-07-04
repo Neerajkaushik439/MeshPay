@@ -16,3 +16,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+services:
+  bank-service:
+    url: ${BANK_SERVICE_URL:http://localhost:8085}

@@ -34,6 +34,12 @@ public class TransactionController {
     public ResponseEntity<List<TransactionResponse>> getMyTransactions(
             @AuthenticationPrincipal UserDto sender
     ) {
+        String upiId = sender.getUpiId();
+        if (upiId != null && !upiId.isBlank()) {
+            List<TransactionResponse> responses = transactionService.getUserTransactions(upiId);
+            return ResponseEntity.ok(responses);
+        }
+        // Fallback to sender-only transactions by email
         List<TransactionResponse> responses = transactionService.getSenderTransactions(sender.getEmail());
         return ResponseEntity.ok(responses);
     }

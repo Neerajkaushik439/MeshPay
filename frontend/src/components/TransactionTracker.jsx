@@ -101,9 +101,11 @@ export default function TransactionTracker({ transactionId, onClose }) {
     const token = localStorage.getItem('token');
     let isTerminal = false;
 
+    const transactionServiceUrl = import.meta.env.VITE_TRANSACTION_SERVICE_URL || 'http://localhost:8086';
+
     const fetchHistory = () => {
       console.log('[Tracker] Fetching event history...');
-      axios.get(`http://localhost:8086/api/transactions/${transactionId}/events`, {
+      axios.get(`${transactionServiceUrl}/api/transactions/${transactionId}/events`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => {
@@ -142,7 +144,7 @@ export default function TransactionTracker({ transactionId, onClose }) {
     }, 1500);
 
     const stompClient = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8086/ws'),
+      webSocketFactory: () => new SockJS(`${transactionServiceUrl}/ws`),
       debug: (str) => console.log('[STOMP] ' + str),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
@@ -230,14 +232,6 @@ export default function TransactionTracker({ transactionId, onClose }) {
     return { status: 'PENDING', event: null };
   };
 
-  const getStatusColor = () => {
-    const txnStatus = derivedStatus?.transactionStatus;
-    if (txnStatus === 'SUCCESS') return 'text-emerald-600';
-    if (txnStatus === 'FAILED') return 'text-red-600';
-    if (txnStatus === 'EXPIRED') return 'text-amber-600';
-    return 'text-blue-600';
-  };
-
   const getDisplayStatus = () => {
     if (!derivedStatus) return 'ENCRYPTED';
     const status = derivedStatus.transactionStatus;
@@ -248,22 +242,22 @@ export default function TransactionTracker({ transactionId, onClose }) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-md relative overflow-hidden text-slate-900 mb-6">
+    <div className="bg-white border border-white rounded-3xl p-6 shadow-xl relative overflow-hidden text-black mb-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white shadow-sm pb-5 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-black flex items-center gap-2">
             Live Transaction Tracker
-            <span className="text-xs font-normal text-slate-500 font-mono">#{transactionId.substring(0, 8)}</span>
+            <span className="text-xs font-normal font-mono">#{transactionId.substring(0, 8)}</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-1">Real-time Bluetooth mesh propagation metrics</p>
+          <p className="text-xs mt-1 text-black">Real-time Bluetooth mesh propagation metrics</p>
         </div>
         <div className="flex items-center gap-3">
           {onClose && (
             <button 
               onClick={onClose}
-              className="px-3 py-1 text-xs bg-slate-100 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-200 transition-all cursor-pointer"
+              className="px-3 py-1 text-xs bg-white border border-white shadow-md text-black rounded-lg hover:bg-blue-600 hover:text-white transition-all cursor-pointer font-bold"
             >
               Clear Tracker
             </button>
@@ -273,28 +267,28 @@ export default function TransactionTracker({ transactionId, onClose }) {
 
       {/* Horizontal Packet Routing Timeline */}
       <div className="mb-8">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Packet Routing Timeline</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest mb-6">Packet Routing Timeline</h3>
         <div className="relative flex flex-col md:flex-row justify-between items-center w-full gap-4 md:gap-2 px-2">
           {/* Connector Line */}
-          <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-200 -translate-y-1/2 hidden md:block z-0" />
+          <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-blue-600/30 -translate-y-1/2 hidden md:block z-0" />
           
           {steps.map((step, idx) => {
             const { status } = getStepState(step.key);
             
-            let circleStyle = 'bg-white border-slate-200 text-slate-400';
-            let labelStyle = 'text-slate-400';
+            let circleStyle = 'bg-white border-white shadow-sm text-black';
+            let labelStyle = 'text-black font-semibold';
             let ringPulse = null;
 
             if (status === 'SUCCESS') {
-              circleStyle = 'bg-emerald-500 border-emerald-500 text-white font-bold';
-              labelStyle = 'text-emerald-600 font-semibold';
+              circleStyle = 'bg-blue-600 border-white shadow-sm text-white font-bold';
+              labelStyle = 'text-black font-extrabold';
             } else if (status === 'ACTIVE') {
-              circleStyle = 'bg-blue-600 border-blue-600 text-white font-bold';
-              labelStyle = 'text-blue-600 font-bold';
-              ringPulse = <span className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" />;
+              circleStyle = 'bg-blue-600 border-white shadow-sm text-white font-bold';
+              labelStyle = 'text-black font-extrabold';
+              ringPulse = <span className="absolute inset-0 rounded-full bg-blue-600/30 animate-ping" />;
             } else if (status === 'FAILED') {
-              circleStyle = 'bg-red-500 border-red-500 text-white font-bold';
-              labelStyle = 'text-red-600 font-bold';
+              circleStyle = 'bg-blue-600 border-white shadow-sm text-white font-bold';
+              labelStyle = 'text-black font-extrabold';
             }
 
             return (
@@ -319,16 +313,16 @@ export default function TransactionTracker({ transactionId, onClose }) {
       {/* Live Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-          <span className="text-[10px] text-slate-500 uppercase font-semibold">Transaction Status</span>
-          <div className={`text-xl font-extrabold mt-1 uppercase ${getStatusColor()}`}>
+        <div className="bg-white p-4 rounded-2xl border border-white shadow-md">
+          <span className="text-[10px] uppercase font-bold">Transaction Status</span>
+          <div className="text-xl font-extrabold mt-1 uppercase text-black">
             {getDisplayStatus()}
           </div>
         </div>
 
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-          <span className="text-[10px] text-slate-500 uppercase font-semibold">Bluetooth Route Trace</span>
-          <div className="text-sm font-mono text-slate-700 mt-1.5 select-all">
+        <div className="bg-white p-4 rounded-2xl border border-white shadow-md">
+          <span className="text-[10px] uppercase font-bold">Bluetooth Route Trace</span>
+          <div className="text-sm font-mono text-black mt-1.5 select-all">
             {fullRouteHistory.join(' ➔ ')}
           </div>
         </div>

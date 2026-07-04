@@ -77,8 +77,11 @@ public class TransactionService {
         System.out.println("========================================");
         log.info("Transaction Created: Starting creation process for user {}", sender.getEmail());
 
-        // 1. Derive Sender UPI ID from Email
-        String senderUpiId = sender.getEmail().split("@")[0] + "@mesh";
+        // 1. Get Sender UPI ID from authenticated user
+        String senderUpiId = sender.getUpiId();
+        if (senderUpiId == null || senderUpiId.isBlank()) {
+            throw new IllegalArgumentException("Sender does not have a UPI ID. Please complete registration.");
+        }
 
         // 2. Validate self-transfer
         if (senderUpiId.equalsIgnoreCase(request.getReceiverUpiId().trim())) {
@@ -264,8 +267,10 @@ public class TransactionService {
         try {
             Transaction transaction = transactionRepository.findByTransactionId(transactionId).orElse(null);
             if (transaction != null) {
-                transaction.setStatus(TransactionStatus.FAILED);
-                transactionRepository.save(transaction);
+                if (transaction.getStatus() != TransactionStatus.SUCCESS) {
+                    transaction.setStatus(TransactionStatus.FAILED);
+                    transactionRepository.save(transaction);
+                }
             }
         } catch (Exception e) {
             log.error("Failed to update transaction status to FAILED in database: {}", e.getMessage());
@@ -280,6 +285,29 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
+    public List<TransactionResponse> getUserTransactions(String upiId) {
+        List<Transaction> sent = transactionRepository.findAllBySenderUpiId(upiId);
+        List<Transaction> received = transactionRepository.findAllByReceiverUpiId(upiId);
+
+        // Merge and deduplicate by transactionId, then sort by creation date descending
+        java.util.Map<UUID, Transaction> merged = new java.util.LinkedHashMap<>();
+        for (Transaction t : sent) {
+            merged.put(t.getTransactionId(), t);
+        }
+        for (Transaction t : received) {
+            merged.putIfAbsent(t.getTransactionId(), t);
+        }
+
+        return merged.values().stream()
+                .sorted((a, b) -> {
+                    if (a.getCreatedAt() == null || b.getCreatedAt() == null) return 0;
+                    return b.getCreatedAt().compareTo(a.getCreatedAt());
+                })
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public TransactionResponse getTransactionByUuid(UUID transactionId) {
         Transaction transaction = transactionRepository.findByTransactionId(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID: " + transactionId));
@@ -288,7 +316,7 @@ public class TransactionService {
 
     @Transactional
     public void updatePacketStatus(Packet packet) {
-        Transaction transaction = transactionRepository.findByTransactionId(packet.getTransactionId())
+        Transaction transaction = transactionRepository.findByTransactionIdForUpdate(packet.getTransactionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for ID: " + packet.getTransactionId()));
 
         log.info("Transaction status notification received: Transaction ID {} Node: {} Status: {}", 
@@ -296,21 +324,27 @@ public class TransactionService {
 
         String stage = "ROUTING";
         String txnStatus = "ROUTING";
-        if (packet.getPacketStatus() == PacketStatus.FAILED) {
-            transaction.setStatus(TransactionStatus.FAILED);
-            txnStatus = "FAILED";
+
+        if (transaction.getStatus() == TransactionStatus.SUCCESS) {
             stage = "COMPLETED";
-        } else if (packet.getPacketStatus() == PacketStatus.RECEIVED && "Gateway".equals(packet.getCurrentNode())) {
-            transaction.setGatewayNode("Gateway");
-            transaction.setStatus(TransactionStatus.ROUTING);
-            stage = "GATEWAY";
-        } else if (packet.getPacketStatus() == PacketStatus.DELIVERED_TO_GATEWAY) {
-            transaction.setGatewayNode("Gateway");
-            transaction.setStatus(TransactionStatus.ROUTING);
-            stage = "GATEWAY";
-        } else if (packet.getPacketStatus() == PacketStatus.FORWARDED && "Gateway".equals(packet.getCurrentNode())) {
-            transaction.setStatus(TransactionStatus.ROUTING);
-            stage = "GATEWAY";
+            txnStatus = "SUCCESS";
+        } else {
+            if (packet.getPacketStatus() == PacketStatus.FAILED) {
+                transaction.setStatus(TransactionStatus.FAILED);
+                txnStatus = "FAILED";
+                stage = "COMPLETED";
+            } else if (packet.getPacketStatus() == PacketStatus.RECEIVED && "Gateway".equals(packet.getCurrentNode())) {
+                transaction.setGatewayNode("Gateway");
+                transaction.setStatus(TransactionStatus.ROUTING);
+                stage = "GATEWAY";
+            } else if (packet.getPacketStatus() == PacketStatus.DELIVERED_TO_GATEWAY) {
+                transaction.setGatewayNode("Gateway");
+                transaction.setStatus(TransactionStatus.ROUTING);
+                stage = "GATEWAY";
+            } else if (packet.getPacketStatus() == PacketStatus.FORWARDED && "Gateway".equals(packet.getCurrentNode())) {
+                transaction.setStatus(TransactionStatus.ROUTING);
+                stage = "GATEWAY";
+            }
         }
 
         transactionRepository.save(transaction);
@@ -318,27 +352,30 @@ public class TransactionService {
         broadcastEvent(packet.getTransactionId(), packet.getCurrentNode(), stage, txnStatus, packet.getPacketStatus().name(), packet.getHopCount(), packet.getRouteHistory(), "Packet updated downstream at " + packet.getCurrentNode() + " to " + packet.getPacketStatus());
     }
 
+    private boolean canTransition(TransactionStatus currentStatus, TransactionStatus newStatus) {
+        if (currentStatus == TransactionStatus.SUCCESS) {
+            return false; // Once SUCCESS, it is final
+        }
+        if (currentStatus == TransactionStatus.FAILED || currentStatus == TransactionStatus.EXPIRED) {
+            // FAILED or EXPIRED can only transition to SUCCESS
+            return newStatus == TransactionStatus.SUCCESS;
+        }
+        return true;
+    }
+
     @Transactional
     public void processTransactionEvent(TransactionEvent event) {
         log.info("Processing TransactionEvent: ID {} Stage {} Status {}", 
                 event.getTransactionId(), event.getCurrentStage(), event.getTransactionStatus());
         
-        Transaction transaction = transactionRepository.findByTransactionId(event.getTransactionId()).orElse(null);
+        Transaction transaction = transactionRepository.findByTransactionIdForUpdate(event.getTransactionId()).orElse(null);
         if (transaction != null) {
             if (event.getTransactionStatus() != null) {
                 try {
                     TransactionStatus newStatus = TransactionStatus.valueOf(event.getTransactionStatus());
                     TransactionStatus currentStatus = transaction.getStatus();
                     
-                    boolean isCurrentTerminal = currentStatus == TransactionStatus.SUCCESS 
-                            || currentStatus == TransactionStatus.FAILED 
-                            || currentStatus == TransactionStatus.EXPIRED;
-                            
-                    boolean isNewTerminal = newStatus == TransactionStatus.SUCCESS 
-                            || newStatus == TransactionStatus.FAILED 
-                            || newStatus == TransactionStatus.EXPIRED;
-                            
-                    if (!isCurrentTerminal || isNewTerminal) {
+                    if (canTransition(currentStatus, newStatus)) {
                         transaction.setStatus(newStatus);
                     }
                 } catch (Exception ignored) {}
