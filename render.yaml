@@ -22,7 +22,7 @@ services:
           name: meshpay-bank-service
           property: host
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://meshpay-frontend.onrender.com
 
   # ==========================================
   # 2. RELAY SERVICE 1
@@ -131,7 +131,7 @@ services:
           name: meshpay-transaction-service
           property: host
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://meshpay-frontend.onrender.com
 
   # ==========================================
   # 6. TRANSACTION SERVICE
@@ -166,7 +166,7 @@ services:
           name: meshpay-relay-service-1
           property: host
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://meshpay-frontend.onrender.com
 
   # ==========================================
   # 7. FRONTEND STATIC SITE

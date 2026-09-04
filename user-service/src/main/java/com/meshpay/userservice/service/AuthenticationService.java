@@ -125,10 +125,16 @@ public class AuthenticationService {
 
     /**
      * Calls the Bank Service to create a bank account for the newly registered user.
+     * Uses an extended timeout to handle Render free-tier cold starts (services may take 30-60s to wake).
      */
     private void createBankAccount(String accountHolderName, String upiId, BigDecimal initialBalance) {
         try {
-            RestTemplate restTemplate = new RestTemplate();
+            // 60-second timeout: Render free tier services can take 30+ seconds to cold start
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                    new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(60_000);
+            factory.setReadTimeout(60_000);
+            RestTemplate restTemplate = new RestTemplate(factory);
 
             Map<String, Object> accountRequest = new HashMap<>();
             accountRequest.put("accountNumber", "ACC-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
@@ -138,13 +144,13 @@ public class AuthenticationService {
             accountRequest.put("accountStatus", "ACTIVE");
 
             String url = com.meshpay.common.util.UrlUtil.normalizeUrl(bankServiceUrl) + "/api/accounts";
-            log.info("Creating bank account for UPI ID {} at {}", upiId, url);
+            log.info("Creating bank account for UPI ID {} at {} with balance {}", upiId, url, initialBalance);
 
             ResponseEntity<Map> response = restTemplate.postForEntity(url, accountRequest, Map.class);
-            log.info("Bank account created successfully for UPI ID {}: {}", upiId, response.getStatusCode());
+            log.info("Bank account created successfully for UPI ID {}: status={}", upiId, response.getStatusCode());
         } catch (Exception e) {
-            log.error("Failed to create bank account for UPI ID {}: {}", upiId, e.getMessage());
-            throw new RuntimeException("Registration succeeded but bank account creation failed. Please contact support.", e);
+            log.error("Failed to create bank account for UPI ID {} at bankServiceUrl={}: {}", upiId, bankServiceUrl, e.getMessage(), e);
+            throw new RuntimeException("Registration succeeded but bank account creation failed: " + e.getMessage(), e);
         }
     }
 }
