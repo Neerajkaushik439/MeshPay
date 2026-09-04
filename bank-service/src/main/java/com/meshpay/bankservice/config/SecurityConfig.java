@@ -31,14 +31,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        String allowedOriginsEnv = System.getenv("ALLOWED_ORIGINS");
-        if (allowedOriginsEnv != null && !allowedOriginsEnv.isEmpty()) {
-            configuration.setAllowedOriginPatterns(List.of(allowedOriginsEnv.split(",")));
-        } else {
-            configuration.setAllowedOriginPatterns(List.of("*"));
-        }
+        // Always allow all origins — bank-service is internal but frontend needs direct access on free tier
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
