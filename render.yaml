@@ -1,0 +1,195 @@
+services:
+  # ==========================================
+  # 1. USER SERVICE
+  # ==========================================
+  - type: web
+    name: meshpay-user-service
+    runtime: docker
+    dockerfilePath: ./user-service/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_user?sslMode=REQUIRED&createDatabaseIfNotExist=true
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: BANK_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-bank-service
+          property: host
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+  # ==========================================
+  # 2. RELAY SERVICE 1
+  # ==========================================
+  - type: web
+    name: meshpay-relay-service-1
+    runtime: docker
+    dockerfilePath: ./relay-service-1/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_relay_1?sslMode=REQUIRED&createDatabaseIfNotExist=true
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: NEXT_NODE_URL
+        fromService:
+          type: web
+          name: meshpay-relay-service-2
+          property: host
+      - key: TRANSACTION_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-transaction-service
+          property: host
+
+  # ==========================================
+  # 3. RELAY SERVICE 2
+  # ==========================================
+  - type: web
+    name: meshpay-relay-service-2
+    runtime: docker
+    dockerfilePath: ./relay-service-2/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_relay_2?sslMode=REQUIRED&createDatabaseIfNotExist=true
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: NEXT_NODE_URL
+        fromService:
+          type: web
+          name: meshpay-gateway-service
+          property: host
+      - key: TRANSACTION_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-transaction-service
+          property: host
+
+  # ==========================================
+  # 4. GATEWAY SERVICE
+  # ==========================================
+  - type: web
+    name: meshpay-gateway-service
+    runtime: docker
+    dockerfilePath: ./gateway-service/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_gateway?sslMode=REQUIRED&createDatabaseIfNotExist=true
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: BANK_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-bank-service
+          property: host
+      - key: TRANSACTION_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-transaction-service
+          property: host
+
+  # ==========================================
+  # 5. BANK SERVICE
+  # ==========================================
+  - type: web
+    name: meshpay-bank-service
+    runtime: docker
+    dockerfilePath: ./bank-service/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_bank?sslMode=REQUIRED&createDatabaseIfNotExist=true
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: TRANSACTION_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-transaction-service
+          property: host
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+  # ==========================================
+  # 6. TRANSACTION SERVICE
+  # ==========================================
+  - type: web
+    name: meshpay-transaction-service
+    runtime: docker
+    dockerfilePath: ./transaction-service/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_transaction?sslMode=REQUIRED&createDatabaseIfNotExist=true
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: USER_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-user-service
+          property: host
+      - key: BANK_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-bank-service
+          property: host
+      - key: NEXT_NODE_URL
+        fromService:
+          type: web
+          name: meshpay-relay-service-1
+          property: host
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+  # ==========================================
+  # 7. FRONTEND STATIC SITE
+  # ==========================================
+  - type: web
+    name: meshpay-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_USER_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-user-service
+          property: host
+      - key: VITE_BANK_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-bank-service
+          property: host
+      - key: VITE_TRANSACTION_SERVICE_URL
+        fromService:
+          type: web
+          name: meshpay-transaction-service
+          property: host
