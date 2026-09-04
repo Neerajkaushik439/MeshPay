@@ -33,9 +33,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         String allowedOriginsEnv = System.getenv("ALLOWED_ORIGINS");
         if (allowedOriginsEnv != null && !allowedOriginsEnv.isEmpty()) {
-            configuration.setAllowedOrigins(List.of(allowedOriginsEnv.split(",")));
+            configuration.setAllowedOriginPatterns(List.of(allowedOriginsEnv.split(",")));
         } else {
-            configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+            configuration.setAllowedOriginPatterns(List.of("*"));
         }
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
