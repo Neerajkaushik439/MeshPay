@@ -11,9 +11,9 @@ services:
     region: oregon
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_user?sslMode=REQUIRED&createDatabaseIfNotExist=true
+        value: jdbc:mysql://meshpay-mysql-neeraj439sharma-9f9b.e.aivencloud.com:25638/meshpay_user?sslMode=REQUIRED&createDatabaseIfNotExist=true
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: BANK_SERVICE_URL
@@ -36,9 +36,9 @@ services:
     region: oregon
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_relay_1?sslMode=REQUIRED&createDatabaseIfNotExist=true
+        value: jdbc:mysql://meshpay-mysql-neeraj439sharma-9f9b.e.aivencloud.com:25638/meshpay_relay_1?sslMode=REQUIRED&createDatabaseIfNotExist=true
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: NEXT_NODE_URL
@@ -64,9 +64,9 @@ services:
     region: oregon
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_relay_2?sslMode=REQUIRED&createDatabaseIfNotExist=true
+        value: jdbc:mysql://meshpay-mysql-neeraj439sharma-9f9b.e.aivencloud.com:25638/meshpay_relay_2?sslMode=REQUIRED&createDatabaseIfNotExist=true
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: NEXT_NODE_URL
@@ -92,9 +92,9 @@ services:
     region: oregon
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_gateway?sslMode=REQUIRED&createDatabaseIfNotExist=true
+        value: jdbc:mysql://meshpay-mysql-neeraj439sharma-9f9b.e.aivencloud.com:25638/meshpay_gateway?sslMode=REQUIRED&createDatabaseIfNotExist=true
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: BANK_SERVICE_URL
@@ -120,9 +120,9 @@ services:
     region: oregon
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_bank?sslMode=REQUIRED&createDatabaseIfNotExist=true
+        value: jdbc:mysql://meshpay-mysql-neeraj439sharma-9f9b.e.aivencloud.com:25638/meshpay_bank?sslMode=REQUIRED&createDatabaseIfNotExist=true
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: TRANSACTION_SERVICE_URL
@@ -145,9 +145,9 @@ services:
     region: oregon
     envVars:
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:mysql://meshpay-neeraj439sharma-9f9b.e.aivencloud.com:25640/meshpay_transaction?sslMode=REQUIRED&createDatabaseIfNotExist=true
+        value: jdbc:mysql://meshpay-mysql-neeraj439sharma-9f9b.e.aivencloud.com:25638/meshpay_transaction?sslMode=REQUIRED&createDatabaseIfNotExist=true
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: avnadmin
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: USER_SERVICE_URL
