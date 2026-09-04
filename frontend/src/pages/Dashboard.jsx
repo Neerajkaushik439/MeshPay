@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import TransactionTracker from '../components/TransactionTracker';
+import { BANK_SERVICE_URL, TRANSACTION_SERVICE_URL } from '../utils/urlHelper';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   
   // Local wallet state (fetched from Bank Service)
   const [balance, setBalance] = useState(0.00);
+  const [balanceLoading, setBalanceLoading] = useState(false);
   const [payee, setPayee] = useState('');
   const [amount, setAmount] = useState('');
   const [activeTxnId, setActiveTxnId] = useState(null);
@@ -20,8 +22,8 @@ export default function Dashboard() {
   // Use persisted UPI ID from user profile
   const senderUpiId = user?.upiId || '';
 
-  const bankServiceUrl = import.meta.env.VITE_BANK_SERVICE_URL || 'http://localhost:8085';
-  const transactionServiceUrl = import.meta.env.VITE_TRANSACTION_SERVICE_URL || 'http://localhost:8086';
+  const bankServiceUrl = BANK_SERVICE_URL;
+  const transactionServiceUrl = TRANSACTION_SERVICE_URL;
 
   // Fetch real balance from Bank-Service
   const fetchRealBalance = async () => {

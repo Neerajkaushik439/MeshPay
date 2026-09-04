@@ -36,7 +36,7 @@ public class UserClient {
     private String userServiceUrl;
 
     public UserDto getAuthenticatedUser(String jwtToken) {
-        String url = userServiceUrl + "/api/auth/me";
+        String url = com.meshpay.common.util.UrlUtil.normalizeUrl(userServiceUrl) + "/api/auth/me";
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + jwtToken);
         HttpEntity<Void> entity = new HttpEntity<>(headers);

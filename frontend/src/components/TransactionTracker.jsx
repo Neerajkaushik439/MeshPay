@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import axios from 'axios';
+import { TRANSACTION_SERVICE_URL } from '../utils/urlHelper';
 
 export default function TransactionTracker({ transactionId, onClose }) {
   const [connectionStatus, setConnectionStatus] = useState('CONNECTING');
@@ -101,7 +102,7 @@ export default function TransactionTracker({ transactionId, onClose }) {
     const token = localStorage.getItem('token');
     let isTerminal = false;
 
-    const transactionServiceUrl = import.meta.env.VITE_TRANSACTION_SERVICE_URL || 'http://localhost:8086';
+    const transactionServiceUrl = TRANSACTION_SERVICE_URL;
 
     const fetchHistory = () => {
       console.log('[Tracker] Fetching event history...');

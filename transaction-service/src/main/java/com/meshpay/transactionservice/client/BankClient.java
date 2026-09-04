@@ -18,7 +18,7 @@ public class BankClient {
     private String bankServiceUrl;
 
     public PublicKey getBankPublicKey() {
-        String url = bankServiceUrl + "/api/security/public-key";
+        String url = com.meshpay.common.util.UrlUtil.normalizeUrl(bankServiceUrl) + "/api/security/public-key";
         try {
             String base64PublicKey = restTemplate.getForObject(url, String.class);
             if (base64PublicKey == null || base64PublicKey.trim().isEmpty()) {

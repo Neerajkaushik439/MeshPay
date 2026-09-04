@@ -112,7 +112,7 @@ public class RelayController {
 
         // 4. Forward packet using REST with 3 retries (2s delay)
         int attempt = 0;
-        String targetUrl = nextNodeUrl + "/api/relay/receive";
+        String targetUrl = com.meshpay.common.util.UrlUtil.normalizeUrl(nextNodeUrl) + "/api/relay/receive";
         System.out.println("[RELAY-1] STEP 4: Forwarding packet to Relay-2 at URL: " + targetUrl);
 
         while (attempt < 3) {
@@ -179,7 +179,7 @@ public class RelayController {
     }
 
     private void publishEvent(Packet packet, String stage, String txnStatus, String message) {
-        String eventUrl = transactionServiceUrl + "/api/transactions/events";
+        String eventUrl = com.meshpay.common.util.UrlUtil.normalizeUrl(transactionServiceUrl) + "/api/transactions/events";
         System.out.println("[RELAY-1] EVENT: Publishing event to " + eventUrl);
         System.out.println("[RELAY-1] EVENT: Stage=" + stage + " TxnStatus=" + txnStatus + " Message=" + message);
         try {

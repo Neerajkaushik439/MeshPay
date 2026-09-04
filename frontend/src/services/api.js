@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { USER_SERVICE_URL } from '../utils/urlHelper';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:8081',
+  baseURL: USER_SERVICE_URL,
 });
 
 // Request Interceptor: Attach JWT token

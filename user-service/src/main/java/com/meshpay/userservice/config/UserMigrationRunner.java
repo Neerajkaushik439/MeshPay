@@ -89,9 +89,10 @@ public class UserMigrationRunner implements CommandLineRunner {
         try {
             RestTemplate restTemplate = new RestTemplate();
 
+            String normalizedBankUrl = com.meshpay.common.util.UrlUtil.normalizeUrl(bankServiceUrl);
             // First check if account already exists
             try {
-                restTemplate.getForEntity(bankServiceUrl + "/api/accounts/upi/" + upiId, Map.class);
+                restTemplate.getForEntity(normalizedBankUrl + "/api/accounts/upi/" + upiId, Map.class);
                 log.info("[MIGRATION] Bank account already exists for UPI ID '{}'", upiId);
                 return;
             } catch (Exception ignored) {
@@ -106,7 +107,7 @@ public class UserMigrationRunner implements CommandLineRunner {
             accountRequest.put("accountStatus", "ACTIVE");
 
             ResponseEntity<Map> response = restTemplate.postForEntity(
-                    bankServiceUrl + "/api/accounts", accountRequest, Map.class);
+                    normalizedBankUrl + "/api/accounts", accountRequest, Map.class);
             log.info("[MIGRATION] Created bank account for UPI ID '{}': {}", upiId, response.getStatusCode());
         } catch (Exception e) {
             log.warn("[MIGRATION] Could not create bank account for UPI ID '{}': {}. " +

@@ -127,7 +127,7 @@ public class GatewayController {
 
         // 6. Forward packet directly to Bank Service with 3 retries (2s delay)
         int attempt = 0;
-        String targetUrl = bankServiceUrl + "/api/payments/process";
+        String targetUrl = com.meshpay.common.util.UrlUtil.normalizeUrl(bankServiceUrl) + "/api/payments/process";
         System.out.println("[GATEWAY] STEP 6: Forwarding packet to Bank at URL: " + targetUrl);
 
         log.info("Forwarding started: Sending packet ID {} to Bank", packet.getPacketId());
@@ -191,7 +191,7 @@ public class GatewayController {
     }
 
     private void notifyTransactionService(Packet packet) {
-        String callbackUrl = transactionServiceUrl + "/api/transactions/packet-status";
+        String callbackUrl = com.meshpay.common.util.UrlUtil.normalizeUrl(transactionServiceUrl) + "/api/transactions/packet-status";
         System.out.println("[GATEWAY] NOTIFY: Sending packet-status to " + callbackUrl + " status=" + packet.getPacketStatus());
         try {
             restTemplate.postForEntity(callbackUrl, packet, Void.class);
@@ -206,7 +206,7 @@ public class GatewayController {
     }
 
     private void publishEvent(Packet packet, String stage, String txnStatus, String message) {
-        String eventUrl = transactionServiceUrl + "/api/transactions/events";
+        String eventUrl = com.meshpay.common.util.UrlUtil.normalizeUrl(transactionServiceUrl) + "/api/transactions/events";
         System.out.println("[GATEWAY] EVENT: Publishing event to " + eventUrl);
         System.out.println("[GATEWAY] EVENT: Stage=" + stage + " TxnStatus=" + txnStatus + " Message=" + message);
         try {

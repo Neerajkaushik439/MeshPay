@@ -197,7 +197,7 @@ public class TransactionService {
 
     private void sendPacketWithRetry(Packet packet, UUID transactionId) {
         int attempt = 0;
-        String targetUrl = nextNodeUrl + "/api/relay/receive";
+        String targetUrl = com.meshpay.common.util.UrlUtil.normalizeUrl(nextNodeUrl) + "/api/relay/receive";
         System.out.println("[TXN-SERVICE] SEND_PACKET: Starting sendPacketWithRetry");
         System.out.println("[TXN-SERVICE] SEND_PACKET: Target URL: " + targetUrl);
         System.out.println("[TXN-SERVICE] SEND_PACKET: Packet ID: " + packet.getPacketId());

@@ -282,7 +282,7 @@ public class PaymentService {
                     .routeHistory(packet.getRouteHistory())
                     .message(message)
                     .build();
-            restTemplate.postForEntity(transactionServiceUrl + "/api/transactions/events", event, Void.class);
+            restTemplate.postForEntity(com.meshpay.common.util.UrlUtil.normalizeUrl(transactionServiceUrl) + "/api/transactions/events", event, Void.class);
         } catch (Exception e) {
             log.warn("Failed to publish event to Transaction Service: {}", e.getMessage());
         }

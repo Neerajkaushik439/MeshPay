@@ -137,7 +137,7 @@ public class AuthenticationService {
             accountRequest.put("currentBalance", initialBalance);
             accountRequest.put("accountStatus", "ACTIVE");
 
-            String url = bankServiceUrl + "/api/accounts";
+            String url = com.meshpay.common.util.UrlUtil.normalizeUrl(bankServiceUrl) + "/api/accounts";
             log.info("Creating bank account for UPI ID {} at {}", upiId, url);
 
             ResponseEntity<Map> response = restTemplate.postForEntity(url, accountRequest, Map.class);
