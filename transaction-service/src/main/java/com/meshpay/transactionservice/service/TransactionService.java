@@ -418,12 +418,37 @@ public class TransactionService {
 
     public List<TransactionEvent> getTransactionEvents(UUID transactionId) {
         List<TransactionEvent> cached = eventCache.get(transactionId);
+        Transaction txn = transactionRepository.findByTransactionId(transactionId).orElse(null);
+
         if (cached != null && !cached.isEmpty()) {
+            if (txn != null && txn.getStatus() == TransactionStatus.SUCCESS) {
+                boolean hasCompleted = cached.stream().anyMatch(e -> "COMPLETED".equals(e.getCurrentStage()) || "SUCCESS".equals(e.getTransactionStatus()));
+                if (!hasCompleted) {
+                    List<String> history = new ArrayList<>();
+                    if (!cached.isEmpty() && cached.get(cached.size() - 1).getRouteHistory() != null) {
+                        history = new ArrayList<>(cached.get(cached.size() - 1).getRouteHistory());
+                    }
+                    if (!history.contains("Bank")) {
+                        history.add("Bank");
+                    }
+                    TransactionEvent completedEvent = TransactionEvent.builder()
+                            .transactionId(transactionId)
+                            .timestamp(LocalDateTime.now())
+                            .serviceName("Bank-Service")
+                            .currentStage("COMPLETED")
+                            .transactionStatus("SUCCESS")
+                            .packetStatus("DELIVERED")
+                            .hopCount(history.size() > 0 ? history.size() - 1 : 4)
+                            .routeHistory(history)
+                            .message("Transaction Completed Successfully")
+                            .build();
+                    cached.add(completedEvent);
+                }
+            }
             return cached;
         }
 
         // Fallback: Reconstruct from DB
-        Transaction txn = transactionRepository.findByTransactionId(transactionId).orElse(null);
         if (txn == null) {
             return java.util.Collections.emptyList();
         }

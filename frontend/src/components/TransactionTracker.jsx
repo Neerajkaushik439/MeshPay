@@ -127,16 +127,40 @@ export default function TransactionTracker({ transactionId, onClose }) {
         .catch(err => {
           console.error('[Tracker] Failed to fetch history:', err);
         });
+
+      // Check transaction status directly as reliable fallback
+      axios.get(`${transactionServiceUrl}/api/transactions/${transactionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => {
+          if (res.data && res.data.status === 'SUCCESS') {
+            setEvents(prev => {
+              const hasCompleted = prev.some(e => e.currentStage === 'COMPLETED');
+              if (!hasCompleted) {
+                return mergeEvents(prev, [{
+                  transactionId,
+                  currentStage: 'COMPLETED',
+                  transactionStatus: 'SUCCESS',
+                  message: 'Transaction Completed Successfully',
+                  timestamp: new Date().toISOString()
+                }]);
+              }
+              return prev;
+            });
+            isTerminal = true;
+          }
+        })
+        .catch(() => {});
     };
 
     // Fetch immediately
     fetchHistory();
 
-    // Poll every 1.5 seconds until terminal state or 30 seconds elapsed
+    // Poll every 1.5 seconds until terminal state or 60 seconds elapsed
     let pollCount = 0;
     const pollInterval = setInterval(() => {
       pollCount++;
-      if (isTerminal || pollCount > 20) {
+      if (isTerminal || pollCount > 40) {
         console.log('[Tracker] Stopping history polling (terminal:', isTerminal, 'count:', pollCount, ')');
         clearInterval(pollInterval);
         return;
@@ -223,7 +247,10 @@ export default function TransactionTracker({ transactionId, onClose }) {
     }
 
     if (isSuccess) {
-      return { status: 'PENDING', event: null };
+      if (stepKey === 'COMPLETED') {
+        return { status: 'SUCCESS', event: { currentStage: 'COMPLETED', transactionStatus: 'SUCCESS', message: 'Transaction Completed Successfully' } };
+      }
+      return { status: 'SUCCESS', event: null };
     }
 
     if (derivedStatus && derivedStatus.currentStage === stepKey) {
