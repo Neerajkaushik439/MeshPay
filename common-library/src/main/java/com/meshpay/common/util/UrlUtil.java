@@ -43,6 +43,12 @@ public final class UrlUtil {
     }
 
     private static String stripProtocol(String url) {
-        return url.replaceFirst("^https?://", "");
+        if (url.startsWith("https://")) {
+            return url.substring(8);
+        }
+        if (url.startsWith("http://")) {
+            return url.substring(7);
+        }
+        return url;
     }
 }
