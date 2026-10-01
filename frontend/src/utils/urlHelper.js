@@ -3,16 +3,6 @@
  * Render injects internal service names like "meshpay-user-service-rs49" without ".onrender.com".
  * This function converts them to full public URLs: "https://meshpay-user-service-rs49.onrender.com".
  */
-const parseProtocol = (trimmed) => {
-  if (trimmed.startsWith('http://')) {
-    return { protocol: 'http://', host: trimmed.substring(7) };
-  }
-  if (trimmed.startsWith('https://')) {
-    return { protocol: 'https://', host: trimmed.substring(8) };
-  }
-  return { protocol: 'https://', host: trimmed };
-};
-
 export const normalizeUrl = (url, defaultUrl) => {
   if (!url || url === 'undefined' || url === 'null' || url === '') {
     return defaultUrl;
@@ -20,8 +10,14 @@ export const normalizeUrl = (url, defaultUrl) => {
   let trimmed = url.trim().replace(/\/+$/, ''); // trim whitespace and trailing slashes
 
   // Strip existing protocol if present to inspect the hostname
-  const { protocol, host } = parseProtocol(trimmed);
-  trimmed = host;
+  let protocol = 'https://';
+  if (trimmed.startsWith('http://')) {
+    protocol = 'http://';
+    trimmed = trimmed.substring(7);
+  } else if (trimmed.startsWith('https://')) {
+    protocol = 'https://';
+    trimmed = trimmed.substring(8);
+  }
 
   // Handle local development
   if (trimmed.startsWith('localhost') || trimmed.startsWith('127.0.0.1')) {
