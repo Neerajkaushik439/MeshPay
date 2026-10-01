@@ -28,7 +28,7 @@ public final class UrlUtil {
         }
 
         // Strip existing protocol for inspection
-        String host = trimmed.replaceFirst("^https?://", "");
+        String host = stripProtocol(trimmed);
 
         // If it's a bare Render internal service slug (e.g. "meshpay-bank-service-rs49")
         if (!host.contains(".")) {
@@ -40,5 +40,9 @@ public final class UrlUtil {
         }
 
         return "https://" + trimmed;
+    }
+
+    private static String stripProtocol(String url) {
+        return url.replaceFirst("^https?://", "");
     }
 }
